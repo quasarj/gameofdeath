@@ -32,18 +32,24 @@ along with Perlenspiel. If not, see <http://www.gnu.org/licenses/>.
 var test = 0;
 // note that this is a dict, and it uses : syntax
 var LIFE = {
-    RATE: 120,   // 60/60 = 1 per second
+    DEBUG: false,
+    RATE: 30,   // 60/60 = 1 per second
     BG_COLOR: PS.COLOR_RED,
+    GRID_HEIGHT: 32,
+    GRID_WIDTH: 32,
 
     ticks: 0,
+    running: false,
 
     // store the location of active beads on the board
     beads: [],
 
     tick: function() {
-        PS.statusText("This is tick #" + LIFE.ticks++);
-        LIFE.progress();
-        LIFE.draw();
+        if (LIFE.running) {
+            PS.statusText("This is tick #" + LIFE.ticks++);
+            LIFE.progress();
+            LIFE.draw();
+        }
     },
 
     progress: function() {
@@ -53,17 +59,59 @@ var LIFE = {
         var next = [];
         // build a new array of actives 
 
+        // calculate all surviving cells
         for (var i = 0; i < LIFE.beads.length; i++) {
             var bead = LIFE.beads[i];
             // should this bead live?
             // must look at surrounding beads
             var count = LIFE.neighborCount(bead);
             
-            if (count > 1) //this bead gets to live!
+            if (count > 1 && count < 4) //this bead gets to live!
                 next.push(bead);
 
             // PS.color(x, y, LIFE.BG_COLOR);
         }
+
+        // calculate all new cell growth
+        // note that this happens "at the same time", so it is driven
+        // off the LIFE.beads set rather than "next"
+
+        // since we have a list of all live cells (LIFE.beads), we can save
+        // some time by only looking for new growth around them. So, first
+        // we need a bounding box... (there may be a faster way to do this?)
+
+        var minx = LIFE.GRID_WIDTH;
+        var miny = LIFE.GRID_HEIGHT;
+        var maxx = 0;
+        var maxy = 0;
+
+        for (var i = 0; i < LIFE.beads.length; i++) {
+            var x = LIFE.beads[i][0];
+            var y = LIFE.beads[i][1];
+
+            if (x < minx)
+                minx = x;
+            if (x > maxx)
+                maxx = x;
+            if (y < miny)
+                miny = y;
+            if (y > maxy)
+                maxy = y;
+        }
+       
+        if (LIFE.beads.length > 0) {  
+            LIFE.debug("bounding box: " + [minx, miny, maxx, maxy] + "\n");
+
+            for (var x = minx - 1; x < maxx + 2; x++)
+                for (var y = miny - 1; y < maxy + 2; y++) {
+                    if (!LIFE.beadExists(x, y) && LIFE.neighborCount([x, y]) == 3)
+                        next.push([x, y]);
+                }
+
+        } else {
+            LIFE.debug("no life left!\n");
+        }
+
 
         LIFE.beads = next;
 
@@ -113,7 +161,8 @@ var LIFE = {
             var x = LIFE.beads[i][0];
             var y = LIFE.beads[i][1];
 
-            PS.color(x, y, LIFE.BG_COLOR);
+            if (x >= 0 && x < LIFE.GRID_WIDTH && y >= 0 && y < LIFE.GRID_HEIGHT)
+                PS.color(x, y, LIFE.BG_COLOR);
         }
     
     },
@@ -124,6 +173,11 @@ var LIFE = {
         LIFE.beads.push([1, 3]);
 
         LIFE.draw(); 
+    },
+
+    debug: function(message) {
+        if (LIFE.DEBUG)
+            PS.debug(message);
     },
 
 };
@@ -144,12 +198,13 @@ PS.init = function( system, options ) {
 	// Do this FIRST to avoid problems!
 	// Otherwise you will get the default 8x8 grid
 
-	PS.gridSize( 32, 32 ); // replace with your own x/y values
+	PS.gridSize( LIFE.GRID_WIDTH, LIFE.GRID_HEIGHT ); // replace with your own x/y values
 
 	// Add any other initialization code you need here
     PS.statusText("Firin' up the thrusters");
 
     LIFE.init();
+    PS.timerStart(LIFE.RATE, LIFE.tick);
 };
 
 // PS.touch ( x, y, data, options )
@@ -257,7 +312,7 @@ PS.keyDown = function( key, shift, ctrl, options ) {
 	// Add code here for when a key is pressed
 
     // begin the timer when a key is pressed. Any key will do.
-    PS.timerStart(LIFE.RATE, LIFE.tick);
+    LIFE.running = !LIFE.running;
 };
 
 // PS.keyUp ( key, shift, ctrl, options )
