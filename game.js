@@ -32,7 +32,7 @@ along with Perlenspiel. If not, see <http://www.gnu.org/licenses/>.
 var test = 0;
 // note that this is a dict, and it uses : syntax
 var LIFE = {
-    RATE: 120,   // 60/60 = 1 per second
+    RATE: 30,   // 60/60 = 1 per second
     BG_COLOR: PS.COLOR_RED,
 
     ticks: 0,
